@@ -21,7 +21,11 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "i2c-lcd.h"
+#include <stddef.h>
+#include <string.h>
+#include <stdint.h>
+#include <stdlib.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -31,7 +35,37 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+// define states
+#define Pgo 0
+#define Wgo 1
+#define Sgo 2
+#define Wwait 3
+#define Swait 4
+#define Warn1 5
+#define Off1 6
+#define Warn2 7
+#define Off2 8
+#define Warn3 9
+#define Off3 10
+#define stopP 11
+#define stopW 12
+#define stopS 13
 
+// define value of state
+#define Pgo_val 0x127
+#define Wgo_val 0x61
+#define Sgo_val 0x109
+#define Wwait_val 0xA1
+#define Swait_val 0x111
+#define Warn1_val 0x121
+#define Off1_val 0x120
+#define Warn2_val 0x121
+#define Off2_val 0x120
+#define Warn3_val 0x121
+#define Off3_val 0x120
+#define stopP_val 0x121
+#define stopW_val 0x121
+#define stopS_val 0x121
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -58,11 +92,64 @@ static void MX_TIM3_Init(void);
 static void MX_TIM4_Init(void);
 static void MX_I2C1_Init(void);
 /* USER CODE BEGIN PFP */
-
+char* itoa(int value, char* str, int base);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
+// Runs on STM32F103C8T6
+// Use a table implementation of a Moore finite state machine to operate
+// a traffic light.
+// Truong Giang Nguyen
+// Jan 10th, 2024
+//
+// walk button sensor connected to PB5 (1=button pressed)
+// north facing car detector connected to PB4 (1=car present)
+// east facing car detector connected to PB3 (1=car present)
+//
+// east facing red light connected to PA8
+// east facing yellow light connected to PA7
+// east facing green light connected to PA6
+// north facing red light connected to PA5
+// north facing yellow light connected to PA4
+// north facing green light connected to PA3
+// walk blue light connected to PA2
+// walk green light connected to PA1
+// walk red light connected to PA0
+
+struct State {
+	uint32_t out;
+	unsigned long wait;
+	uint32_t next[8]; //Index of the state
+};
+typedef const struct State Stype;
+
+Stype fsm[14] = {
+{0x127, 4000, {Pgo, Warn1, Warn1, Warn1, Pgo, Warn1, Warn1, Warn1}},
+{0x61, 4000, {Wgo, Wgo, Wwait, Wwait, Wwait, Wwait, Wwait, Wwait}},
+{0x109, 4000, {Sgo, Swait, Sgo, Swait, Swait, Swait, Swait, Swait}},
+{0xA1, 1600, {stopW, stopW, stopW, stopW, stopW, stopW, stopW, stopW}},
+{0x111, 1600, {stopS, stopS, stopS, stopS, stopS, stopS, stopS, stopS}},
+{0x121, 300, {Off1, Off1, Off1, Off1, Off1, Off1, Off1, Off1}},
+{0x120, 300, {Warn2, Warn2, Warn2, Warn2, Warn2, Warn2, Warn2, Warn2}},
+{0x121, 300, {Off2, Off2, Off2, Off2, Off2, Off2, Off2, Off2}},
+{0x120, 300, {Warn3, Warn3, Warn3, Warn3, Warn3, Warn3, Warn3, Warn3}},
+{0x121, 300, {Off3, Off3, Off3, Off3, Off3, Off3, Off3, Off3}},
+{0x120, 300, {stopP, stopP, stopP, stopP, stopP, stopP, stopP, stopP}},
+{0x121, 250, {Pgo, Wgo, Sgo, Sgo, Pgo, Wgo, Sgo, Sgo}},
+{0x121, 250, {Pgo, Wgo, Sgo, Sgo, Pgo, Pgo, Pgo, Pgo}},
+{0x121, 250, {Pgo, Wgo, Sgo, Wgo, Pgo, Wgo, Pgo, Wgo}}
+};
+
+uint16_t S;
+uint32_t Input = 0xFF;
+uint32_t check_input_A;
+uint32_t check_input_B;
+uint32_t check_input_C;
+uint32_t check_output;
+uint32_t check_state;
+uint32_t count=0;
 
 /* USER CODE END 0 */
 
@@ -99,9 +186,20 @@ int main(void)
   MX_TIM4_Init();
   MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
+  //Timer Interrupts
   HAL_TIM_Base_Start_IT(&htim2);
   HAL_TIM_Base_Start_IT(&htim3);
   HAL_TIM_Base_Start_IT(&htim4);
+
+  while(1) {
+	  check_input_B = (GPIOB->IDR)&(0x38);
+	  check_output = GPIOA->ODR;
+	  GPIOA->ODR = (fsm[S].out)|((fsm[S].out & 0x100)<<1);
+	  HAL_Delay(fsm[S].wait);
+	  Input = ((GPIOB->IDR)>>3)&0x7;
+	  S = fsm[S].next[Input];
+	  count++;`
+  }
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -399,6 +497,57 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 		HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_2);
 	}
 
+}
+
+char* itoa(int value, char* str, int base) {
+    // Handle base other than 10 (not needed for your specific case)
+    if (base != 10) {
+        return NULL;
+    }
+
+    // Handle zero as a special case
+    if (value == 0) {
+        str[0] = '0';
+        str[1] = '\0';
+        return str;
+    }
+
+    int i = 0;
+    int is_negative = 0;
+
+    // Handle negative numbers
+    if (value < 0) {
+        is_negative = 1;
+        value = -value;
+    }
+
+    // Process individual digits
+    while (value != 0) {
+        int digit = value % 10;
+        str[i++] = '0' + digit;
+        value /= 10;
+    }
+
+    // Add negative sign if applicable
+    if (is_negative) {
+        str[i++] = '-';
+    }
+
+    // Null-terminate the string
+    str[i] = '\0';
+
+    // Reverse the string
+    int start = 0;
+    int end = i - 1;
+    while (start < end) {
+        char temp = str[start];
+        str[start] = str[end];
+        str[end] = temp;
+        start++;
+        end--;
+    }
+
+    return str;
 }
 /* USER CODE END 4 */
 
