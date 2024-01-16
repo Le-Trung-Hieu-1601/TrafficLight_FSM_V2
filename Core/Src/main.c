@@ -26,6 +26,8 @@
 #include <string.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <stdio.h>
+#include "liquidcrystal_i2c.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -93,6 +95,7 @@ static void MX_TIM4_Init(void);
 static void MX_I2C1_Init(void);
 /* USER CODE BEGIN PFP */
 char* itoa(int value, char* str, int base);
+char lcdBuffer [50];
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -149,7 +152,9 @@ uint32_t check_input_B;
 uint32_t check_input_C;
 uint32_t check_output;
 uint32_t check_state;
-uint32_t count=0;
+uint32_t count1=0;
+uint32_t count2=0;
+uint16_t test=0;
 
 /* USER CODE END 0 */
 
@@ -186,10 +191,29 @@ int main(void)
   MX_TIM4_Init();
   MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
-  //Timer Interrupts
-  HAL_TIM_Base_Start_IT(&htim2);
-  HAL_TIM_Base_Start_IT(&htim3);
-  HAL_TIM_Base_Start_IT(&htim4);
+  /* Initialize */
+  HD44780_Init(2);
+
+  /* Clear buffer */
+  HD44780_Clear();
+  /* Hide characters */
+  HD44780_NoDisplay();
+  HD44780_Cursor();
+  HD44780_SetCursor(0,0);
+  HD44780_PrintStr("HELLO STM32!!!");
+  HD44780_PrintSpecialChar(0);
+
+  /* Show characters */
+  HD44780_Display();
+
+  /* Move position */
+  HD44780_SetCursor(0, 1);
+  HD44780_PrintStr("BYE STM32!!!");
+  HD44780_PrintSpecialChar(1);
+
+  /* Blink cursor */
+  HD44780_Blink();
+
 
   while(1) {
 	  check_input_B = (GPIOB->IDR)&(0x38);
@@ -198,7 +222,7 @@ int main(void)
 	  HAL_Delay(fsm[S].wait);
 	  Input = ((GPIOB->IDR)>>3)&0x7;
 	  S = fsm[S].next[Input];
-	  count++;`
+//	  count++;
   }
   /* USER CODE END 2 */
 
