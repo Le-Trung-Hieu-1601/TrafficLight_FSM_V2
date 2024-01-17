@@ -94,8 +94,7 @@ static void MX_TIM3_Init(void);
 static void MX_TIM4_Init(void);
 static void MX_I2C1_Init(void);
 /* USER CODE BEGIN PFP */
-char* itoa(int value, char* str, int base);
-char lcdBuffer [50];
+
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -191,38 +190,54 @@ int main(void)
   MX_TIM4_Init();
   MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
-  /* Initialize */
   HD44780_Init(2);
-
-  /* Clear buffer */
   HD44780_Clear();
-  /* Hide characters */
-  HD44780_NoDisplay();
-  HD44780_Cursor();
   HD44780_SetCursor(0,0);
-  HD44780_PrintStr("HELLO STM32!!!");
-  HD44780_PrintSpecialChar(0);
+  HD44780_PrintStr("HELLO");
+  HD44780_SetCursor(10,1);
+  HD44780_PrintStr("WORLD");
+  HAL_Delay(2000);
 
-  /* Show characters */
+  HD44780_Clear();
+  HD44780_SetCursor(0,0);
+  HD44780_PrintStr("HELLO");
+  HAL_Delay(2000);
+  HD44780_NoBacklight();
+  HAL_Delay(2000);
+  HD44780_Backlight();
+
+  HAL_Delay(2000);
+  HD44780_Cursor();
+  HAL_Delay(2000);
+  HD44780_Blink();
+  HAL_Delay(5000);
+  HD44780_NoBlink();
+  HAL_Delay(2000);
+  HD44780_NoCursor();
+  HAL_Delay(2000);
+
+  HD44780_NoDisplay();
+  HAL_Delay(2000);
   HD44780_Display();
 
-  /* Move position */
-  HD44780_SetCursor(0, 1);
-  HD44780_PrintStr("BYE STM32!!!");
-  HD44780_PrintSpecialChar(1);
+  HD44780_Clear();
+  HD44780_SetCursor(0,0);
+  HD44780_PrintStr("Learning STM32 with LCD is fun :-)");
+  int x;
+  for(int x=0; x<40; x=x+1)
+  {
+    HD44780_ScrollDisplayLeft();  //HD44780_ScrollDisplayRight();
+    HAL_Delay(500);
+  }
 
-  /* Blink cursor */
-  HD44780_Blink();
-
-
-  while(1) {
-	  check_input_B = (GPIOB->IDR)&(0x38);
-	  check_output = GPIOA->ODR;
-	  GPIOA->ODR = (fsm[S].out)|((fsm[S].out & 0x100)<<1);
-	  HAL_Delay(fsm[S].wait);
-	  Input = ((GPIOB->IDR)>>3)&0x7;
-	  S = fsm[S].next[Input];
-//	  count++;
+  char snum[5];
+  for ( int x = 1; x <= 200 ; x++ )
+  {
+    itoa(x, snum, 10);
+    HD44780_Clear();
+    HD44780_SetCursor(0,0);
+    HD44780_PrintStr(snum);
+    HAL_Delay (1000);
   }
   /* USER CODE END 2 */
 
@@ -510,69 +525,7 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
-	if(htim->Instance == TIM2) {
-		HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_0);
-	}
-	if(htim->Instance == TIM3) {
-		HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_1);
-	}
-	if(htim->Instance == TIM4) {
-		HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_2);
-	}
 
-}
-
-char* itoa(int value, char* str, int base) {
-    // Handle base other than 10 (not needed for your specific case)
-    if (base != 10) {
-        return NULL;
-    }
-
-    // Handle zero as a special case
-    if (value == 0) {
-        str[0] = '0';
-        str[1] = '\0';
-        return str;
-    }
-
-    int i = 0;
-    int is_negative = 0;
-
-    // Handle negative numbers
-    if (value < 0) {
-        is_negative = 1;
-        value = -value;
-    }
-
-    // Process individual digits
-    while (value != 0) {
-        int digit = value % 10;
-        str[i++] = '0' + digit;
-        value /= 10;
-    }
-
-    // Add negative sign if applicable
-    if (is_negative) {
-        str[i++] = '-';
-    }
-
-    // Null-terminate the string
-    str[i] = '\0';
-
-    // Reverse the string
-    int start = 0;
-    int end = i - 1;
-    while (start < end) {
-        char temp = str[start];
-        str[start] = str[end];
-        str[end] = temp;
-        start++;
-        end--;
-    }
-
-    return str;
-}
 /* USER CODE END 4 */
 
 /**
