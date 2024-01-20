@@ -146,14 +146,12 @@ Stype fsm[14] = {
 
 uint16_t S;
 uint32_t Input = 0xFF;
-uint32_t check_input_A;
-uint32_t check_input_B;
-uint32_t check_input_C;
+uint32_t checkWalk;
+uint32_t checkSouth;
+uint32_t checkWest;
 uint32_t check_output;
 uint32_t check_state;
-uint32_t count1=0;
-uint32_t count2=0;
-uint16_t test=0;
+uint32_t input_status;
 
 /* USER CODE END 0 */
 
@@ -190,55 +188,55 @@ int main(void)
   MX_TIM4_Init();
   MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
-  HD44780_Init(2);
-  HD44780_Clear();
-  HD44780_SetCursor(0,0);
-  HD44780_PrintStr("HELLO");
-  HD44780_SetCursor(10,1);
-  HD44780_PrintStr("WORLD");
-  HAL_Delay(2000);
-
-  HD44780_Clear();
-  HD44780_SetCursor(0,0);
-  HD44780_PrintStr("HELLO");
-  HAL_Delay(2000);
-  HD44780_NoBacklight();
-  HAL_Delay(2000);
-  HD44780_Backlight();
-
-  HAL_Delay(2000);
-  HD44780_Cursor();
-  HAL_Delay(2000);
-  HD44780_Blink();
-  HAL_Delay(5000);
-  HD44780_NoBlink();
-  HAL_Delay(2000);
-  HD44780_NoCursor();
-  HAL_Delay(2000);
-
-  HD44780_NoDisplay();
-  HAL_Delay(2000);
-  HD44780_Display();
-
-  HD44780_Clear();
-  HD44780_SetCursor(0,0);
-  HD44780_PrintStr("Learning STM32 with LCD is fun :-)");
-  int x;
-  for(int x=0; x<40; x=x+1)
-  {
-    HD44780_ScrollDisplayLeft();  //HD44780_ScrollDisplayRight();
-    HAL_Delay(500);
-  }
-
-  char snum[5];
-  for ( int x = 1; x <= 200 ; x++ )
-  {
-    itoa(x, snum, 10);
-    HD44780_Clear();
-    HD44780_SetCursor(0,0);
-    HD44780_PrintStr(snum);
-    HAL_Delay (1000);
-  }
+//  HD44780_Init(2);
+//  HD44780_Clear();
+//  HD44780_SetCursor(0,0);
+//  HD44780_PrintStr("HELLO");
+//  HD44780_SetCursor(10,1);
+//  HD44780_PrintStr("WORLD");
+//  HAL_Delay(2000);
+//
+//  HD44780_Clear();
+//  HD44780_SetCursor(0,0);
+//  HD44780_PrintStr("HELLO");
+//  HAL_Delay(2000);
+//  HD44780_NoBacklight();
+//  HAL_Delay(2000);
+//  HD44780_Backlight();
+//
+//  HAL_Delay(2000);
+//  HD44780_Cursor();
+//  HAL_Delay(2000);
+//  HD44780_Blink();
+//  HAL_Delay(5000);
+//  HD44780_NoBlink();
+//  HAL_Delay(2000);
+//  HD44780_NoCursor();
+//  HAL_Delay(2000);
+//
+//  HD44780_NoDisplay();
+//  HAL_Delay(2000);
+//  HD44780_Display();
+//
+//  HD44780_Clear();
+//  HD44780_SetCursor(0,0);
+//  HD44780_PrintStr("Learning STM32 with LCD is fun :-)");
+//  int x;
+//  for(int x=0; x<40; x=x+1)
+//  {
+//    HD44780_ScrollDisplayLeft();  //HD44780_ScrollDisplayRight();
+//    HAL_Delay(500);
+//  }
+//
+//  char snum[5];
+//  for ( int x = 1; x <= 200 ; x++ )
+//  {
+//    itoa(x, snum, 10);
+//    HD44780_Clear();
+//    HD44780_SetCursor(0,0);
+//    HD44780_PrintStr(snum);
+//    HAL_Delay (1000);
+//  }
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -391,7 +389,7 @@ static void MX_TIM3_Init(void)
   htim3.Instance = TIM3;
   htim3.Init.Prescaler = 32000-1;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim3.Init.Period = 2000;
+  htim3.Init.Period = 5000;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
@@ -436,7 +434,7 @@ static void MX_TIM4_Init(void)
   htim4.Instance = TIM4;
   htim4.Init.Prescaler = 32000-1;
   htim4.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim4.Init.Period = 5000;
+  htim4.Init.Period = 65535;
   htim4.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim4.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim4) != HAL_OK)
@@ -506,7 +504,7 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pins : PB3 PB4 PB5 */
   GPIO_InitStruct.Pin = GPIO_PIN_3|GPIO_PIN_4|GPIO_PIN_5;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
   GPIO_InitStruct.Pull = GPIO_PULLDOWN;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
@@ -525,6 +523,38 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
+    if (GPIO_Pin == GPIO_PIN_5) { // Walk button
+        if (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_5) == GPIO_PIN_SET) {
+            // Rising edge (button released)
+            checkWalk = 1;
+        } else {
+            // Falling edge (button pressed)
+            checkWalk = 0;
+        }
+    }
+    if (GPIO_Pin == GPIO_PIN_4) { // Walk button
+        if (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_4) == GPIO_PIN_SET) {
+            // Rising edge (button released)
+            checkSouth = 1;
+        } else {
+            // Falling edge (button pressed)
+            checkSouth = 0;
+        }
+    }
+    if (GPIO_Pin == GPIO_PIN_3) { // Walk button
+        if (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_3) == GPIO_PIN_SET) {
+            // Rising edge (button released)
+            checkWest = 1;
+        } else {
+            // Falling edge (button pressed)
+            checkWest = 0;
+        }
+    }
+
+//    uint32_t checkButton
+}
 
 /* USER CODE END 4 */
 
