@@ -239,9 +239,9 @@ int main(void)
   S = AllStop;
   while(1) {
 	  //stop all the timers
-	  HAL_TIM_Base_Stop(&htim2);
-	  HAL_TIM_Base_Stop(&htim3);
-	  HAL_TIM_Base_Stop(&htim4);
+	  HAL_TIM_Base_Stop_IT(&htim2);
+	  HAL_TIM_Base_Stop_IT(&htim3);
+	  HAL_TIM_Base_Stop_IT(&htim4);
 	  // set output
 	  GPIOA->ODR = (fsm[S].out)|((fsm[S].out & 0x100)<<1);
 	  // delay
@@ -532,22 +532,22 @@ static void TimerDelayMs(uint32_t time) {
 	{
 	case 10000: // green
 		if(greenEnd == 0) {
-			HAL_TIM_Base_Start(&htim2);
+			HAL_TIM_Base_Start_IT(&htim2);
 			while(1) {
 				if(greenEnd == 1) {
 					jumpToMain = 1;
-					HAL_TIM_Base_Stop(&htim2);
+					HAL_TIM_Base_Stop_IT(&htim2);
 					break;
 				}
 			}
 			jumpToMain = 1;
 		}
 		if((greenEnd >= 1 )|| (jumpToMain == 0)) {
-			HAL_TIM_Base_Start(&htim2);
+			HAL_TIM_Base_Start_IT(&htim2);
 			uint32_t nextGreenEnd = greenEnd += 1;
 			while(1) {
 				if((greenEnd == nextGreenEnd) || (checkGPIO == 1)) {
-					HAL_TIM_Base_Stop(&htim2);
+					HAL_TIM_Base_Stop_IT(&htim2);
 					break;
 				}
 			}
@@ -563,19 +563,19 @@ static void TimerDelayMs(uint32_t time) {
 	case 5000: // yellow
 		yellowEnd = 0;
 		greenEnd = 0;
-		HAL_TIM_Base_Start(&htim3);
+		HAL_TIM_Base_Start_IT(&htim3);
 		while(1) {
 			if(yellowEnd == 1) {
-				HAL_TIM_Base_Stop(&htim3);
+				HAL_TIM_Base_Stop_IT(&htim3);
 				break;
 			}
 		}
 	case 1000: // warn
 		warnEnd = 0;
-		HAL_TIM_Base_Start(&htim4);
+		HAL_TIM_Base_Start_IT(&htim4);
 		while(1) {
 			if(warnEnd == 1) {
-				HAL_TIM_Base_Stop(&htim4);
+				HAL_TIM_Base_Stop_IT(&htim4);
 				break;
 			}
 		}
