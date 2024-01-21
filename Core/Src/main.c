@@ -75,6 +75,7 @@ const uint32_t greenDelay = 10000;
 const uint32_t yellowDelay = 5000;
 const uint32_t warnDelay = 1000;
 const uint32_t redDelay = 180403;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -162,6 +163,7 @@ uint32_t count2 = 0;
 uint16_t greenCNT = 0;
 uint16_t yellowCNT = 0;
 uint16_t warnCNT = 0;
+uint32_t warnTime = 0;
 char lcdCNT[50];
 
 /* USER CODE END 0 */
@@ -320,7 +322,7 @@ static void MX_TIM2_Init(void)
   htim2.Instance = TIM2;
   htim2.Init.Prescaler = 16000-1;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 10000;
+  htim2.Init.Period = 10000-100;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
@@ -365,7 +367,7 @@ static void MX_TIM3_Init(void)
   htim3.Instance = TIM3;
   htim3.Init.Prescaler = 16000-1;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim3.Init.Period = 5000;
+  htim3.Init.Period = 5000-100;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
@@ -410,7 +412,7 @@ static void MX_TIM4_Init(void)
   htim4.Instance = TIM4;
   htim4.Init.Prescaler = 16000-1;
   htim4.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim4.Init.Period = 1000;
+  htim4.Init.Period = 1000-100;
   htim4.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim4.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim4) != HAL_OK)
@@ -489,59 +491,61 @@ static void MX_GPIO_Init(void)
 /* USER CODE BEGIN 4 */
 
 static void sendRemaningTime(uint8_t color, uint32_t time) {
+	count1 = time;
 	greenCNT = TIM2->CNT;
 	yellowCNT = TIM3->CNT;
 	warnCNT = TIM4->CNT;
 	time /= 1000;
-	time ++;
-	uint32_t warnTime = 1;
+	count2 = time;
+
 	switch(color)
 	{
 	case 1: // green
 		HD44780_Clear();
-		HD44780_SetCursor(5,0);
+		HD44780_SetCursor(14,0);
 		sprintf(lcdCNT,"%02ld", time+greenEnd*10);
 		HD44780_PrintStr(lcdCNT);
 		break;
 	case 2: // yellow
 		HD44780_Clear();
-		HD44780_SetCursor(5,0);
-		sprintf(lcdCNT,"%02ld", time+yellowEnd+10);
+		HD44780_SetCursor(7,0);
+		sprintf(lcdCNT,"%02ld", time);
 		HD44780_PrintStr(lcdCNT);
+//		HD44780_PrintStr("Hello World");
 		break;
 	case 3: // warn
 		HD44780_Clear();
-		HD44780_SetCursor(5,0);
-		if(warnTime == 1) {
+		HD44780_SetCursor(7,0);
+		if(warnEnds == 1) {
 			sprintf(lcdCNT,"%02ld", warnTime);
 			HD44780_PrintStr(lcdCNT);
-			warnTime ++;
+			warnTime = 1;
 			break;
-		} else if (warnTime == 2) {
+		} else if (warnEnds == 2) {
 			sprintf(lcdCNT,"%02ld", warnTime);
 			HD44780_PrintStr(lcdCNT);
-			warnTime ++;
+			warnTime = 2;
 			break;
-		} else if (warnTime == 3) {
+		} else if (warnEnds == 3) {
 			sprintf(lcdCNT,"%02ld", warnTime);
 			HD44780_PrintStr(lcdCNT);
-			warnTime ++;
+			warnTime = 3;
 			break;
-		} else if (warnTime == 4) {
+		} else if (warnEnds == 4) {
 			sprintf(lcdCNT,"%02ld", warnTime);
 			HD44780_PrintStr(lcdCNT);
-			warnTime ++;
+			warnTime = 4;
 			break;
-		} else if (warnTime == 5) {
+		} else if (warnEnds == 5) {
 			sprintf(lcdCNT,"%02ld", warnTime);
 			HD44780_PrintStr(lcdCNT);
-			warnTime ++;
+			warnTime = 5;
 			break;
 		}
 		break;
 	case 4: // allRed
 		HD44780_Clear();
-		HD44780_SetCursor(5,0);
+		HD44780_SetCursor(0,0);
 		HD44780_PrintStr("00");
 	}
 }
@@ -602,6 +606,7 @@ static void TimerDelayMs(uint32_t time) {
 		greenEnds = 0;
 		warnEnd = 0;
 		HAL_TIM_Base_Start_IT(&htim3);
+		yellowEnd = 0;
 		while(1) {
 			sendRemaningTime(YELLOW, TIM3->CNT);
 			if(yellowEnd == 1) {
@@ -614,6 +619,7 @@ static void TimerDelayMs(uint32_t time) {
 		greenEnd = 0;
 		greenEnds = 0;
 		HAL_TIM_Base_Start_IT(&htim4);
+//		warnEnds = 0;
 		while(1) {
 			sendRemaningTime(WARN, TIM4->CNT);
 			warnCNT = TIM4->CNT;
@@ -637,6 +643,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
     }
     if (htim->Instance == TIM4) {
     	warnEnd += 1;
+    	warnEnds += 1;
     }
 }
 
