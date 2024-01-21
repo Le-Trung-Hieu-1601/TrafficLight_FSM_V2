@@ -281,7 +281,7 @@ static void MX_I2C1_Init(void)
 
   /* USER CODE END I2C1_Init 1 */
   hi2c1.Instance = I2C1;
-  hi2c1.Init.ClockSpeed = 1000;
+  hi2c1.Init.ClockSpeed = 5000;
   hi2c1.Init.DutyCycle = I2C_DUTYCYCLE_2;
   hi2c1.Init.OwnAddress1 = 0;
   hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
@@ -489,6 +489,9 @@ static void MX_GPIO_Init(void)
 /* USER CODE BEGIN 4 */
 
 static void sendRemaningTime(uint8_t color, uint32_t time) {
+	greenCNT = TIM2->CNT;
+	yellowCNT = TIM3->CNT;
+	warnCNT = TIM4->CNT;
 	time /= 1000;
 	time ++;
 	uint32_t warnTime = 1;
@@ -497,40 +500,40 @@ static void sendRemaningTime(uint8_t color, uint32_t time) {
 	case 1: // green
 		HD44780_Clear();
 		HD44780_SetCursor(5,0);
-		sprintf(lcdCNT,"%ld", time);
+		sprintf(lcdCNT,"%02ld", time+greenEnd*10);
 		HD44780_PrintStr(lcdCNT);
 		break;
 	case 2: // yellow
 		HD44780_Clear();
 		HD44780_SetCursor(5,0);
-		sprintf(lcdCNT,"%ld", time);
+		sprintf(lcdCNT,"%02ld", time+yellowEnd+10);
 		HD44780_PrintStr(lcdCNT);
 		break;
 	case 3: // warn
 		HD44780_Clear();
 		HD44780_SetCursor(5,0);
 		if(warnTime == 1) {
-			sprintf(lcdCNT,"%ld", warnTime);
+			sprintf(lcdCNT,"%02ld", warnTime);
 			HD44780_PrintStr(lcdCNT);
 			warnTime ++;
 			break;
 		} else if (warnTime == 2) {
-			sprintf(lcdCNT,"%ld", warnTime);
+			sprintf(lcdCNT,"%02ld", warnTime);
 			HD44780_PrintStr(lcdCNT);
 			warnTime ++;
 			break;
 		} else if (warnTime == 3) {
-			sprintf(lcdCNT,"%ld", warnTime);
+			sprintf(lcdCNT,"%02ld", warnTime);
 			HD44780_PrintStr(lcdCNT);
 			warnTime ++;
 			break;
 		} else if (warnTime == 4) {
-			sprintf(lcdCNT,"%ld", warnTime);
+			sprintf(lcdCNT,"%02ld", warnTime);
 			HD44780_PrintStr(lcdCNT);
 			warnTime ++;
 			break;
 		} else if (warnTime == 5) {
-			sprintf(lcdCNT,"%ld", warnTime);
+			sprintf(lcdCNT,"%02ld", warnTime);
 			HD44780_PrintStr(lcdCNT);
 			warnTime ++;
 			break;
