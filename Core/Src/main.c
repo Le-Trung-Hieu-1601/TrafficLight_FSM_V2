@@ -204,6 +204,7 @@ int main(void)
   S = AllStop;
   while(1) {
 	  // set output
+//	  GPIOA->ODR = (fsm[S].out);
 	  GPIOA->ODR = (fsm[S].out)|((fsm[S].out & 0x100)<<1);
 	  // delay
 	  TimerDelayMs(fsm[S].wait);
@@ -280,7 +281,7 @@ static void MX_I2C1_Init(void)
 
   /* USER CODE END I2C1_Init 1 */
   hi2c1.Instance = I2C1;
-  hi2c1.Init.ClockSpeed = 100000;
+  hi2c1.Init.ClockSpeed = 1000;
   hi2c1.Init.DutyCycle = I2C_DUTYCYCLE_2;
   hi2c1.Init.OwnAddress1 = 0;
   hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
@@ -496,50 +497,49 @@ static void sendRemaningTime(uint8_t color, uint32_t time) {
 	case 1: // green
 		HD44780_Clear();
 		HD44780_SetCursor(5,0);
-		sprintf(lcdCNT,"%d", time);
+		sprintf(lcdCNT,"%ld", time);
 		HD44780_PrintStr(lcdCNT);
 		break;
 	case 2: // yellow
 		HD44780_Clear();
 		HD44780_SetCursor(5,0);
-		sprintf(lcdCNT,"%d", time);
+		sprintf(lcdCNT,"%ld", time);
 		HD44780_PrintStr(lcdCNT);
 		break;
 	case 3: // warn
 		HD44780_Clear();
 		HD44780_SetCursor(5,0);
 		if(warnTime == 1) {
-			sprintf(lcdCNT,"%d", warnTime);
+			sprintf(lcdCNT,"%ld", warnTime);
 			HD44780_PrintStr(lcdCNT);
 			warnTime ++;
 			break;
 		} else if (warnTime == 2) {
-			sprintf(lcdCNT,"%d", warnTime);
+			sprintf(lcdCNT,"%ld", warnTime);
 			HD44780_PrintStr(lcdCNT);
 			warnTime ++;
 			break;
 		} else if (warnTime == 3) {
-			sprintf(lcdCNT,"%d", warnTime);
+			sprintf(lcdCNT,"%ld", warnTime);
 			HD44780_PrintStr(lcdCNT);
 			warnTime ++;
 			break;
 		} else if (warnTime == 4) {
-			sprintf(lcdCNT,"%d", warnTime);
+			sprintf(lcdCNT,"%ld", warnTime);
 			HD44780_PrintStr(lcdCNT);
 			warnTime ++;
 			break;
 		} else if (warnTime == 5) {
-			sprintf(lcdCNT,"%d", warnTime);
+			sprintf(lcdCNT,"%ld", warnTime);
 			HD44780_PrintStr(lcdCNT);
 			warnTime ++;
 			break;
 		}
 		break;
-	case 1: // green
+	case 4: // allRed
 		HD44780_Clear();
 		HD44780_SetCursor(5,0);
-		sprintf(lcdCNT,"%d", time);
-		HD44780_PrintStr(lcdCNT);
+		HD44780_PrintStr("00");
 	}
 }
 
@@ -555,14 +555,10 @@ static void TimerDelayMs(uint32_t time) {
 				greenEnd = 0;
 			}
 			while(1) {
-				greenCNT = TIM2->CNT;
-//				greenCNT /= 1000;
-//				sprintf(lcdCNT,"%d",greenCNT);
-//				HD44780_SetCursor(0,0);
-//				HD44780_PrintStr(lcdCNT);
+				sendRemaningTime(GREEN, TIM2->CNT);
 				if(greenEnd == 1) {
 					greenCNT = TIM2->CNT;
-					count1++;
+//					count1++;
 					jumpToMain = 1;
 					HAL_TIM_Base_Stop_IT(&htim2);
 					break;
@@ -570,12 +566,12 @@ static void TimerDelayMs(uint32_t time) {
 			}
 		}
 		if((greenEnd >= 1 ) && (jumpToMain == 0)) {
-			greenCNT = TIM2->CNT;
 //			count2++;
 			HAL_TIM_Base_Start_IT(&htim2);
 			uint32_t nextGreenEnd = greenEnd + 1;
 			uint8_t inputCompare = inputValue;
 			while(1) {
+				sendRemaningTime(GREEN, TIM2->CNT);
 				if((greenEnd == nextGreenEnd) || (inputCompare != inputValue)) {
 					HAL_TIM_Base_Stop_IT(&htim2);
 					break;
@@ -591,6 +587,7 @@ static void TimerDelayMs(uint32_t time) {
 		yellowEnd = 0;
 		warnEnd = 0;
 		while(1) {
+			sendRemaningTime(ALLRED, 180403);
 			if(checkGPIO == 1) {
 				break;
 			}
@@ -603,7 +600,7 @@ static void TimerDelayMs(uint32_t time) {
 		warnEnd = 0;
 		HAL_TIM_Base_Start_IT(&htim3);
 		while(1) {
-			yellowCNT = TIM3->CNT;
+			sendRemaningTime(YELLOW, TIM3->CNT);
 			if(yellowEnd == 1) {
 				HAL_TIM_Base_Stop_IT(&htim3);
 				break;
@@ -615,6 +612,7 @@ static void TimerDelayMs(uint32_t time) {
 		greenEnds = 0;
 		HAL_TIM_Base_Start_IT(&htim4);
 		while(1) {
+			sendRemaningTime(WARN, TIM4->CNT);
 			warnCNT = TIM4->CNT;
 			if(warnEnd == 1) {
 				HAL_TIM_Base_Stop_IT(&htim4);
