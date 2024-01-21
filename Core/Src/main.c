@@ -27,6 +27,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdbool.h>
 #include "liquidcrystal_i2c.h"
 /* USER CODE END Includes */
 
@@ -120,9 +121,9 @@ Stype fsm[11] = {
 		// Sgo
 		{0x109, greenDelay, {Swait,	Swait,	Sgo,	Swait,	Swait,	Swait,	Swait,	Swait}},
 		// Wwait
-		{0xA1, yellowDelay, {Allstop,	Wgo,	Sgo,	Sgo,	Pgo,	Pgo,	Pgo,	Pgo}},
+		{0xA1, yellowDelay, {AllStop,	Wgo,	Sgo,	Sgo,	Pgo,	Pgo,	Pgo,	Pgo}},
 		// Swait
-		{0x111, yellowDelay, {Allstop,	Wgo,	Sgo,	Wgo,	Pgo,	Wgo,	Pgo,	Wgo}},
+		{0x111, yellowDelay, {AllStop,	Wgo,	Sgo,	Wgo,	Pgo,	Wgo,	Pgo,	Wgo}},
 		// Warn1
 		{0x127, warnDelay, {Off1,	Off1,	Off1,	Off1,	Off1,	Off1,	Off1,	Off1}},
 		// Off1
@@ -132,7 +133,7 @@ Stype fsm[11] = {
 		// Off2
 		{0x121, warnDelay, {Warn3,	Warn3,	Warn3,	Warn3,	Warn3,	Warn3,	Warn3,	Warn3}},
 		// Warn3
-		{0x120, warnDelay, {Allstop,	Wgo,	Sgo,	Sgo,	Pgo,	Wgo,	Sgo,	Sgo}},
+		{0x120, warnDelay, {AllStop,	Wgo,	Sgo,	Sgo,	Pgo,	Wgo,	Sgo,	Sgo}},
 		// AllStop
 		{0x121, redDelay, {AllStop,	Wgo,	Sgo,	Sgo,	Pgo,	Wgo,	Sgo,	Sgo}}
 };
@@ -237,6 +238,10 @@ int main(void)
 
   S = AllStop;
   while(1) {
+	  //stop all the timers
+	  HAL_TIM_Base_Stop(&htim2);
+	  HAL_TIM_Base_Stop(&htim3);
+	  HAL_TIM_Base_Stop(&htim4);
 	  // set output
 	  GPIOA->ODR = (fsm[S].out)|((fsm[S].out & 0x100)<<1);
 	  // delay
@@ -525,7 +530,7 @@ static void TimerDelayMs(uint32_t time) {
 	bool jumpToMain = 0;
 	switch (time)
 	{
-	case greenDelay: // green
+	case 10000: // green
 		if(greenEnd == 0) {
 			HAL_TIM_Base_Start(&htim2);
 			while(1) {
@@ -542,21 +547,22 @@ static void TimerDelayMs(uint32_t time) {
 			uint32_t nextGreenEnd = greenEnd += 1;
 			while(1) {
 				if((greenEnd == nextGreenEnd) || (checkGPIO == 1)) {
-					HAL_TIME_Base_Stop(&htim2);
+					HAL_TIM_Base_Stop(&htim2);
 					break;
 				}
 			}
 		}
 		break;
-	case redDelay: // all red
+	case 180403: // all red
 		while(1) {
 			if(checkGPIO == 1) {
 				break;
 			}
 		}
 	break;
-	case yellowDelay: // yellow
+	case 5000: // yellow
 		yellowEnd = 0;
+		greenEnd = 0;
 		HAL_TIM_Base_Start(&htim3);
 		while(1) {
 			if(yellowEnd == 1) {
@@ -564,8 +570,7 @@ static void TimerDelayMs(uint32_t time) {
 				break;
 			}
 		}
-	}
-	case warnDelay: // warn
+	case 1000: // warn
 		warnEnd = 0;
 		HAL_TIM_Base_Start(&htim4);
 		while(1) {
@@ -620,7 +625,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
             checkWest = 0;
         }
     }
-    inputValue = (checkWalk << 2) || (checkSouth << 1) || (checkWest << 0);
+    inputValue = (checkWalk << 2) | (checkSouth << 1) | (checkWest << 0);
     checkGPIO = checkWalk | checkSouth |  checkWest;
 }
 
