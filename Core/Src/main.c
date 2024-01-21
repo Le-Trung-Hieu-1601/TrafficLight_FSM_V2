@@ -357,7 +357,7 @@ static void MX_TIM2_Init(void)
 
   /* USER CODE END TIM2_Init 1 */
   htim2.Instance = TIM2;
-  htim2.Init.Prescaler = 32000-1;
+  htim2.Init.Prescaler = 16000-1;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim2.Init.Period = 10000;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
@@ -402,7 +402,7 @@ static void MX_TIM3_Init(void)
 
   /* USER CODE END TIM3_Init 1 */
   htim3.Instance = TIM3;
-  htim3.Init.Prescaler = 32000-1;
+  htim3.Init.Prescaler = 16000-1;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim3.Init.Period = 5000;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
@@ -447,7 +447,7 @@ static void MX_TIM4_Init(void)
 
   /* USER CODE END TIM4_Init 1 */
   htim4.Instance = TIM4;
-  htim4.Init.Prescaler = 32000-1;
+  htim4.Init.Prescaler = 16000-1;
   htim4.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim4.Init.Period = 1000;
   htim4.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
@@ -545,7 +545,6 @@ static void TimerDelayMs(uint32_t time) {
 					HAL_TIM_Base_Stop_IT(&htim2);
 					break;
 				}
-//				count1++;
 			}
 		}
 		if((greenEnd >= 1 ) && (jumpToMain == 0)) {
@@ -577,6 +576,7 @@ static void TimerDelayMs(uint32_t time) {
 	case 5000: // yellow
 		yellowEnd = 0;
 		greenEnd = 0;
+		greenEnds = 0;
 		warnEnd = 0;
 		HAL_TIM_Base_Start_IT(&htim3);
 		while(1) {
@@ -587,6 +587,8 @@ static void TimerDelayMs(uint32_t time) {
 		}
 	case 1000: // warn
 		warnEnd = 0;
+		greenEnd = 0;
+		greenEnds = 0;
 		HAL_TIM_Base_Start_IT(&htim4);
 		while(1) {
 			if(warnEnd == 1) {
