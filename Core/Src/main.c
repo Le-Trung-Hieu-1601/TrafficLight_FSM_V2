@@ -65,9 +65,10 @@ TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim4;
 
 /* USER CODE BEGIN PV */
-const uint32_t greenDelay = 10;
-const uint32_t yellowDelay = 5;
-const uint32_t warnDelay = 1;
+const uint32_t greenDelay = 10000;
+const uint32_t yellowDelay = 5000;
+const uint32_t warnDelay = 1000;
+const uint32_t redDelay = 180403;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -133,7 +134,7 @@ Stype fsm[11] = {
 		// Warn3
 		{0x120, warnDelay, {Allstop,	Wgo,	Sgo,	Sgo,	Pgo,	Wgo,	Sgo,	Sgo}},
 		// AllStop
-		{0x121, 180403, {AllStop,	Wgo,	Sgo,	Sgo,	Pgo,	Wgo,	Sgo,	Sgo}}
+		{0x121, redDelay, {AllStop,	Wgo,	Sgo,	Sgo,	Pgo,	Wgo,	Sgo,	Sgo}}
 };
 
 static void TimerDelayMs(uint32_t time);
@@ -144,9 +145,10 @@ bool checkWalk = 0;
 bool checkSouth = 0;
 bool checkWest = 0;
 bool checkGPIO = 0;
-uint32_t greenEnd;
-uint32_t yellowEnd;
-uint32_t warnEnd;
+uint8_t inputValue = 0;
+uint32_t greenEnd = 0;
+uint32_t yellowEnd = 0;
+uint32_t warnEnd = 0;
 
 /* USER CODE END 0 */
 
@@ -235,10 +237,14 @@ int main(void)
 
   S = AllStop;
   while(1) {
+	  // set output
 	  GPIOA->ODR = (fsm[S].out)|((fsm[S].out & 0x100)<<1);
-	  //delay
+	  // delay
+	  TimerDelayMs(fsm[S].wait);
 	  //read input
+	  Input = inputValue;
 	  //S = next state
+	  S = fsm[S].next[Input];
   }
   /* USER CODE END 2 */
 
@@ -519,7 +525,7 @@ static void TimerDelayMs(uint32_t time) {
 	bool jumpToMain = 0;
 	switch (time)
 	{
-	case 10000:
+	case greenDelay: // green
 		if(greenEnd == 0) {
 			HAL_TIM_Base_Start(&htim2);
 			while(1) {
@@ -542,13 +548,35 @@ static void TimerDelayMs(uint32_t time) {
 			}
 		}
 		break;
-	case 180403:
+	case redDelay: // all red
 		while(1) {
 			if(checkGPIO == 1) {
 				break;
 			}
 		}
 	break;
+	case yellowDelay: // yellow
+		yellowEnd = 0;
+		HAL_TIM_Base_Start(&htim3);
+		while(1) {
+			if(yellowEnd == 1) {
+				HAL_TIM_Base_Stop(&htim3);
+				break;
+			}
+		}
+	}
+	case warnDelay: // warn
+		warnEnd = 0;
+		HAL_TIM_Base_Start(&htim4);
+		while(1) {
+			if(warnEnd == 1) {
+				HAL_TIM_Base_Stop(&htim4);
+				break;
+			}
+		}
+		break;
+	default:
+		break;
 	}
 }
 
@@ -592,6 +620,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
             checkWest = 0;
         }
     }
+    inputValue = (checkWalk << 2) || (checkSouth << 1) || (checkWest << 0);
     checkGPIO = checkWalk | checkSouth |  checkWest;
 }
 
