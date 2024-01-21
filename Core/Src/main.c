@@ -48,10 +48,7 @@
 #define Warn2 7
 #define Off2 8
 #define Warn3 9
-#define Off3 10
-#define stopP 11
-#define stopW 12
-#define stopS 13
+#define AllStop 10
 
 /* USER CODE END PD */
 
@@ -68,7 +65,9 @@ TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim4;
 
 /* USER CODE BEGIN PV */
-
+const uint32_t greenDelay = 10;
+const uint32_t yellowDelay = 5;
+const uint32_t warnDelay = 1;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -112,33 +111,42 @@ struct State {
 };
 typedef const struct State Stype;
 
-Stype fsm[14] = {
-{0x127, 4000, {Pgo, Warn1, Warn1, Warn1, Pgo, Warn1, Warn1, Warn1}},
-{0x61, 4000, {Wgo, Wgo, Wwait, Wwait, Wwait, Wwait, Wwait, Wwait}},
-{0x109, 4000, {Sgo, Swait, Sgo, Swait, Swait, Swait, Swait, Swait}},
-{0xA1, 1600, {stopW, stopW, stopW, stopW, stopW, stopW, stopW, stopW}},
-{0x111, 1600, {stopS, stopS, stopS, stopS, stopS, stopS, stopS, stopS}},
-{0x121, 300, {Off1, Off1, Off1, Off1, Off1, Off1, Off1, Off1}},
-{0x120, 300, {Warn2, Warn2, Warn2, Warn2, Warn2, Warn2, Warn2, Warn2}},
-{0x121, 300, {Off2, Off2, Off2, Off2, Off2, Off2, Off2, Off2}},
-{0x120, 300, {Warn3, Warn3, Warn3, Warn3, Warn3, Warn3, Warn3, Warn3}},
-{0x121, 300, {Off3, Off3, Off3, Off3, Off3, Off3, Off3, Off3}},
-{0x120, 300, {stopP, stopP, stopP, stopP, stopP, stopP, stopP, stopP}},
-{0x121, 250, {Pgo, Wgo, Sgo, Sgo, Pgo, Wgo, Sgo, Sgo}},
-{0x121, 250, {Pgo, Wgo, Sgo, Sgo, Pgo, Pgo, Pgo, Pgo}},
-{0x121, 250, {Pgo, Wgo, Sgo, Wgo, Pgo, Wgo, Pgo, Wgo}}
+Stype fsm[11] = {
+		// Pgo
+		{0x127, greenDelay, {Warn1,	Warn1,	Warn1,	Warn1,	Pgo,	Warn1,	Warn1,	Warn1}},
+		// Wgo
+		{0x61, greenDelay, {Wwait,	Wgo,	Wwait,	Wwait,	Wwait,	Wwait,	Wwait,	Wwait}},
+		// Sgo
+		{0x109, greenDelay, {Swait,	Swait,	Sgo,	Swait,	Swait,	Swait,	Swait,	Swait}},
+		// Wwait
+		{0xA1, yellowDelay, {Allstop,	Wgo,	Sgo,	Sgo,	Pgo,	Pgo,	Pgo,	Pgo}},
+		// Swait
+		{0x111, yellowDelay, {Allstop,	Wgo,	Sgo,	Wgo,	Pgo,	Wgo,	Pgo,	Wgo}},
+		// Warn1
+		{0x127, warnDelay, {Off1,	Off1,	Off1,	Off1,	Off1,	Off1,	Off1,	Off1}},
+		// Off1
+		{0x121, warnDelay, {Warn2,	Warn2,	Warn2,	Warn2,	Warn2,	Warn2,	Warn2,	Warn2}},
+		// Warn2
+		{0x120, warnDelay, {Off2,	Off2,	Off2,	Off2,	Off2,	Off2,	Off2,	Off2}},
+		// Off2
+		{0x121, warnDelay, {Warn3,	Warn3,	Warn3,	Warn3,	Warn3,	Warn3,	Warn3,	Warn3}},
+		// Warn3
+		{0x120, warnDelay, {Allstop,	Wgo,	Sgo,	Sgo,	Pgo,	Wgo,	Sgo,	Sgo}},
+		// AllStop
+		{0x121, 180403, {AllStop,	Wgo,	Sgo,	Sgo,	Pgo,	Wgo,	Sgo,	Sgo}}
 };
+
+static void TimerDelayMs(uint32_t time);
 
 uint16_t S;
 uint32_t Input = 0xFF;
-uint32_t checkWalk;
-uint32_t checkSouth;
-uint32_t checkWest;
-uint32_t allowUpdate;
+bool checkWalk = 0;
+bool checkSouth = 0;
+bool checkWest = 0;
+bool checkGPIO = 0;
 uint32_t greenEnd;
 uint32_t yellowEnd;
-uint32_t check_state;
-uint32_t input_status;
+uint32_t warnEnd;
 
 /* USER CODE END 0 */
 
@@ -224,6 +232,14 @@ int main(void)
 //    HD44780_PrintStr(snum);
 //    HAL_Delay (1000);
 //  }
+
+  S = AllStop;
+  while(1) {
+	  GPIOA->ODR = (fsm[S].out)|((fsm[S].out & 0x100)<<1);
+	  //delay
+	  //read input
+	  //S = next state
+  }
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -499,16 +515,52 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 
+static void TimerDelayMs(uint32_t time) {
+	bool jumpToMain = 0;
+	switch (time)
+	{
+	case 10000:
+		if(greenEnd == 0) {
+			HAL_TIM_Base_Start(&htim2);
+			while(1) {
+				if(greenEnd == 1) {
+					jumpToMain = 1;
+					HAL_TIM_Base_Stop(&htim2);
+					break;
+				}
+			}
+			jumpToMain = 1;
+		}
+		if((greenEnd >= 1 )|| (jumpToMain == 0)) {
+			HAL_TIM_Base_Start(&htim2);
+			uint32_t nextGreenEnd = greenEnd += 1;
+			while(1) {
+				if((greenEnd == nextGreenEnd) || (checkGPIO == 1)) {
+					HAL_TIME_Base_Stop(&htim2);
+					break;
+				}
+			}
+		}
+		break;
+	case 180403:
+		while(1) {
+			if(checkGPIO == 1) {
+				break;
+			}
+		}
+	break;
+	}
+}
+
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
     if (htim->Instance == TIM2) {
-        // Timer 1 period elapsed
-        allowUpdate ++;  // Allow updates after the first timer interrupt
-        greenEnd = 1;
+        greenEnd += 1;
     }
-    if (greenEnd == 1) {
-        if (htim->Instance == TIM3) {
-        	yellowEnd = 1;
-        }
+    if (htim->Instance == TIM3) {
+    	yellowEnd += 1;
+    }
+    if (htim->Instance == TIM4) {
+    	warnEnd += 1;
     }
 }
 
@@ -540,8 +592,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
             checkWest = 0;
         }
     }
-
-//    uint32_t checkButton
+    checkGPIO = checkWalk | checkSouth |  checkWest;
 }
 
 /* USER CODE END 4 */
