@@ -205,6 +205,10 @@ int main(void)
   HD44780_Clear();
   S = AllStop;
   while(1) {
+	  //
+	  TIM2->CNT = 0;
+	  TIM3->CNT = 0;
+	  TIM4->CNT = 0;
 	  // set output
 //	  GPIOA->ODR = (fsm[S].out);
 	  GPIOA->ODR = (fsm[S].out)|((fsm[S].out & 0x100)<<1);
@@ -283,7 +287,7 @@ static void MX_I2C1_Init(void)
 
   /* USER CODE END I2C1_Init 1 */
   hi2c1.Instance = I2C1;
-  hi2c1.Init.ClockSpeed = 5000;
+  hi2c1.Init.ClockSpeed = 100000;
   hi2c1.Init.DutyCycle = I2C_DUTYCYCLE_2;
   hi2c1.Init.OwnAddress1 = 0;
   hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
@@ -539,7 +543,12 @@ static void sendRemaningTime(uint8_t color, uint32_t time) {
 		} else if (warnEnds == 5) {
 			sprintf(lcdCNT,"%02ld", warnTime);
 			HD44780_PrintStr(lcdCNT);
-			warnTime = 5;
+			warnTime = 0;
+			break;
+		} else {
+			sprintf(lcdCNT,"%02ld", warnTime);
+			HD44780_PrintStr("00");
+			warnTime = 0;
 			break;
 		}
 		break;
@@ -555,6 +564,7 @@ static void TimerDelayMs(uint32_t time) {
 	switch (time)
 	{
 	case 10000: // green
+		warnEnds = 0;
 		if(greenEnd == 0) {
 			HAL_TIM_Base_Start_IT(&htim2);
 			if(greenEnds == 0) {
@@ -605,6 +615,7 @@ static void TimerDelayMs(uint32_t time) {
 		greenEnd = 0;
 		greenEnds = 0;
 		warnEnd = 0;
+		warnEnds = 0;
 		HAL_TIM_Base_Start_IT(&htim3);
 		yellowEnd = 0;
 		while(1) {
@@ -644,6 +655,9 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
     if (htim->Instance == TIM4) {
     	warnEnd += 1;
     	warnEnds += 1;
+    	if(warnEnds >= 6) {
+    		warnEnds = 0;
+    	}
     }
 }
 
